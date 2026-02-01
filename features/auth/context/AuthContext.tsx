@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { User } from '../types/auth'
+import { User } from '../types'
+import apiClient from '../../../lib/axios-client'
 
 interface AuthContextType {
     user: User | null
@@ -12,41 +13,82 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Mock user data - always logged in
-const mockUser: User = {
-    id: 'mock-user-id',
-    email: 'user@myway.com',
-    firstName: 'Demo',
-    lastName: 'User',
-    role: 'STUDENT',
-    avatar: 'https://ui-avatars.com/api/?name=Demo+User'
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = useState<User | null>(mockUser)
-    const [isLoading, setIsLoading] = useState(false)
+    const [user, setUser] = useState<User | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
 
-    useEffect(() => {
-        // Auto-login with mock user
-        setUser(mockUser)
-        setIsLoading(false)
-    }, [])
+    const checkAuth = async () => {
+        const token = localStorage.getItem('access_token')
+        if (!token) {
+            setIsLoading(false)
+            return
+        }
 
-    // Stub functions - do nothing since auth is disabled
-    const login = async (email: string, password: string) => {
-        setUser(mockUser)
+        try {
+            const response = await apiClient.get('/auth/me')
+            setUser(response.data)
+        } catch (error) {
+            console.error('Auth check failed:', error)
+            localStorage.removeItem('access_token')
+            localStorage.removeItem('refresh_token')
+            setUser(null)
+        } finally {
+            setIsLoading(false)
+        }
     }
 
-    const register = async (userDetails: Omit<User, 'id' | 'avatar'> & { password: string }) => {
-        setUser(mockUser)
+    useEffect(() => {
+        checkAuth()
+    }, [])
+
+    const login = async (email: string, password: string) => {
+        setIsLoading(true)
+        try {
+            const response = await apiClient.post('/auth/signin', { email, password })
+            const { accessToken, refreshToken, user } = response.data
+
+            localStorage.setItem('access_token', accessToken)
+            localStorage.setItem('refresh_token', refreshToken)
+            setUser(user)
+        } catch (error) {
+            console.error('Login failed:', error)
+            throw error
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const register = async (userDetails: Omit<User, 'id' | 'avatar' | 'name'> & { password: string }) => {
+        setIsLoading(true)
+        try {
+            const response = await apiClient.post('/auth/signup', {
+                email: userDetails.email,
+                password: userDetails.password,
+                name: `${userDetails.firstName} ${userDetails.lastName}`.trim(),
+                role: userDetails.role
+            })
+            const { accessToken, refreshToken, user } = response.data
+
+            localStorage.setItem('access_token', accessToken)
+            localStorage.setItem('refresh_token', refreshToken)
+            setUser(user)
+        } catch (error) {
+            console.error('Registration failed:', error)
+            throw error
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     const logout = () => {
-        // Do nothing - stay logged in with mock user
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+        setUser(null)
+        window.location.href = '/signin'
     }
 
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated: true, isLoading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, logout }}>
             {children}
         </AuthContext.Provider>
     )

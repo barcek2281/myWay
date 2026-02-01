@@ -73,7 +73,7 @@ export function ProfilePage() {
                                     <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mt-1">
                                         <Shield size={16} className="text-indigo-600 dark:text-indigo-400" />
                                         <span className="text-sm font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded">
-                                            {user?.role || 'Student'}
+                                            {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase() : 'Student'}
                                         </span>
                                     </div>
                                 </div>

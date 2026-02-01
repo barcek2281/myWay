@@ -20,6 +20,7 @@ type SignUpRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=6"`
 	Name     string `json:"name" binding:"required"`
+	Role     string `json:"role"`
 }
 
 type SignInRequest struct {
@@ -57,6 +58,11 @@ func (h *AuthHandler) SignUp(c *gin.Context) {
 		Email:        req.Email,
 		PasswordHash: string(hashedPassword),
 		Name:         req.Name,
+		Role:         req.Role,
+	}
+
+	if user.Role == "" {
+		user.Role = "STUDENT"
 	}
 
 	if err := database.GetDB().Create(&user).Error; err != nil {
@@ -95,6 +101,7 @@ func (h *AuthHandler) SignUp(c *gin.Context) {
 			"id":    user.ID,
 			"email": user.Email,
 			"name":  user.Name,
+			"role":  user.Role,
 		},
 	})
 }
@@ -155,6 +162,7 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 			"id":    user.ID,
 			"email": user.Email,
 			"name":  user.Name,
+			"role":  user.Role,
 		},
 	})
 }
@@ -172,6 +180,7 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 		"id":          user.ID,
 		"email":       user.Email,
 		"name":        user.Name,
+		"role":        user.Role,
 		"memberships": user.Memberships,
 	})
 }

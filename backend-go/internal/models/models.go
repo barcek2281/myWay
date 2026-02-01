@@ -13,6 +13,7 @@ type User struct {
 	Email        string    `gorm:"unique;not null"`
 	PasswordHash string    `gorm:"not null"`
 	Name         string    `gorm:"not null"`
+	Role         string    `gorm:"not null;default:'STUDENT'"`
 	CreatedAt    time.Time
 	LastLogin    *time.Time
 

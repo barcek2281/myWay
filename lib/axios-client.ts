@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+    baseURL: 'http://localhost:8081',
     headers: {
         'Content-Type': 'application/json',
     },
@@ -18,9 +18,11 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
+        const isAuthRequest = error.config?.url?.includes('/auth/signin') || error.config?.url?.includes('/auth/signup');
+
+        if (error.response?.status === 401 && !isAuthRequest) {
             localStorage.removeItem('access_token');
-            localStorage.removeItem('myway_user');
+            localStorage.removeItem('refresh_token');
             window.location.href = '/signin';
         }
         return Promise.reject(error);

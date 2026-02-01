@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './features/auth/context/AuthContext'
+import { AuthPage } from './features/auth/pages/AuthPage'
+import { ProtectedRoute } from './features/auth/components/ProtectedRoute'
 import { HomePage } from './pages/HomePage'
 import { OrgSelectorPage } from './pages/OrgSelectorPage'
 import { OrgCoursesPage } from './pages/OrgCoursesPage'
@@ -24,19 +26,23 @@ export function App() {
           <StudyPackProvider>
             <BrowserRouter>
               <Routes>
-                {/* All routes are now public - no authentication required */}
+                {/* Public Routes */}
                 <Route path="/" element={<HomePage />} />
-                <Route path="/organizations" element={<OrgSelectorPage />} />
-                <Route path="/organizations/:orgId" element={<OrgCoursesPage />} />
-                <Route path="/course/:courseId" element={<CoursePage />} />
-                <Route path="/study/:materialId" element={<StudyPage />} />
-                <Route path="/items" element={<PlaceholderPage title="Syllabus" />} />
-                <Route path="/syllabus" element={<PlaceholderPage title="Syllabus" />} />
-                <Route path="/analytics" element={<AnalyticsPage />} />
-                <Route path="/team" element={<TeamPage />} />
-                <Route path="/notifications" element={<NotificationsPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/signin" element={<AuthPage />} />
+                <Route path="/signup" element={<AuthPage />} />
+
+                {/* Protected Routes */}
+                <Route path="/organizations" element={<ProtectedRoute><OrgSelectorPage /></ProtectedRoute>} />
+                <Route path="/organizations/:orgId" element={<ProtectedRoute><OrgCoursesPage /></ProtectedRoute>} />
+                <Route path="/course/:courseId" element={<ProtectedRoute><CoursePage /></ProtectedRoute>} />
+                <Route path="/study/:materialId" element={<ProtectedRoute><StudyPage /></ProtectedRoute>} />
+                <Route path="/items" element={<ProtectedRoute><PlaceholderPage title="Syllabus" /></ProtectedRoute>} />
+                <Route path="/syllabus" element={<ProtectedRoute><PlaceholderPage title="Syllabus" /></ProtectedRoute>} />
+                <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
+                <Route path="/team" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
+                <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
                 {/* Fallback */}
                 <Route path="*" element={<Navigate to="/" replace />} />

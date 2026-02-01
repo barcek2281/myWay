@@ -97,10 +97,10 @@ export function OrgSidebar() {
         <div className="bg-indigo-900/50 rounded-lg p-3 flex items-center justify-between group">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-8 h-8 rounded-full bg-indigo-700 flex items-center justify-center text-xs font-bold text-white border border-indigo-600 flex-shrink-0">
-              {user?.firstName?.charAt(0) || 'U'}
+              {user?.name?.charAt(0) || user?.firstName?.charAt(0) || 'U'}
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-medium text-white truncate">{user?.firstName} {user?.lastName}</p>
+              <p className="text-sm font-medium text-white truncate">{user?.name || `${user?.firstName} ${user?.lastName}`}</p>
               <p className="text-xs text-indigo-300 truncate">{user?.email}</p>
             </div>
           </div>

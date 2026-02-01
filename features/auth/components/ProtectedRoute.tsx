@@ -1,19 +1,22 @@
-import { Navigate } from 'react-router-dom'
+import React, { useEffect } from 'react'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { Loader2 } from 'lucide-react'
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-    const { isAuthenticated, isLoading } = useAuth()
+    const { user, isLoading } = useAuth()
+    const location = useLocation()
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
             </div>
         )
     }
 
-    if (!isAuthenticated) {
-        return <Navigate to="/signin" replace />
+    if (!user) {
+        return <Navigate to="/signin" state={{ from: location }} replace />
     }
 
     return <>{children}</>
