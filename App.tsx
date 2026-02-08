@@ -32,17 +32,19 @@ export function App() {
                 <Route path="/signup" element={<AuthPage />} />
 
                 {/* Protected Routes */}
-                <Route path="/organizations" element={<ProtectedRoute><OrgSelectorPage /></ProtectedRoute>} />
-                <Route path="/organizations/:orgId" element={<ProtectedRoute><OrgCoursesPage /></ProtectedRoute>} />
-                <Route path="/course/:courseId" element={<ProtectedRoute><CoursePage /></ProtectedRoute>} />
-                <Route path="/study/:materialId" element={<ProtectedRoute><StudyPage /></ProtectedRoute>} />
-                <Route path="/items" element={<ProtectedRoute><PlaceholderPage title="Syllabus" /></ProtectedRoute>} />
-                <Route path="/syllabus" element={<ProtectedRoute><PlaceholderPage title="Syllabus" /></ProtectedRoute>} />
-                <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
-                <Route path="/team" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
-                <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-                <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-                <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/organizations" element={<OrgSelectorPage />} />
+                  <Route path="/organizations/:orgId" element={<OrgCoursesPage />} />
+                  <Route path="/course/:courseId" element={<CoursePage />} />
+                  <Route path="/study/:materialId" element={<StudyPage />} />
+                  <Route path="/items" element={<PlaceholderPage title="Syllabus" />} />
+                  <Route path="/syllabus" element={<PlaceholderPage title="Syllabus" />} />
+                  <Route path="/analytics" element={<AnalyticsPage />} />
+                  <Route path="/team" element={<TeamPage />} />
+                  <Route path="/notifications" element={<NotificationsPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                </Route>
 
                 {/* Fallback */}
                 <Route path="*" element={<Navigate to="/" replace />} />

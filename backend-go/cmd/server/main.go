@@ -68,8 +68,13 @@ func main() {
 		c.JSON(200, gin.H{"status": "healthy"})
 	})
 
-	// Public YouTube transcript endpoint (no auth required)
+	// Public YouTube transcript endpoint
 	router.GET("/youtube/transcript", importsHandler.GetYouTubeTranscript)
+	router.POST("/ai/transcript", handlers.FetchTranscriptHandler)
+	// Keep existing GET for backward compatibility if needed, or replace.
+	// User asked for "backend service", usually POST for actions, but user code might expect GET.
+	// The previous implementation was GET, but my new handler expects JSON body (POST).
+	// I will use POST for robustness and update frontend to POST.
 
 	// Auth routes (no auth required)
 	auth := router.Group("/auth")
@@ -90,6 +95,8 @@ func main() {
 		// Organizations
 		api.POST("/organizations", orgHandler.CreateOrganization)
 		api.GET("/organizations", orgHandler.GetOrganizations)
+		api.POST("/organizations/:id/join", orgHandler.JoinOrganization)
+		api.POST("/organizations/:id/invite", orgHandler.InviteToOrganization)
 		api.POST("/organizations/:id/switch", orgHandler.SwitchOrganization)
 
 		// Courses
@@ -109,12 +116,14 @@ func main() {
 		api.GET("/assignments/course/:courseId", assignmentHandler.GetAssignmentsByCourse)
 		api.GET("/assignments/:id", assignmentHandler.GetAssignment)
 		api.POST("/assignments/:id/submit", assignmentHandler.SubmitAssignment)
+		api.PUT("/submissions/:id/grade", assignmentHandler.GradeSubmission)
 
 		// Discussions
 		api.POST("/discussions/threads", discussionHandler.CreateThread)
 		api.GET("/discussions/threads/course/:courseId", discussionHandler.GetThreadsByCourse)
 		api.GET("/discussions/threads/:id", discussionHandler.GetThread)
 		api.POST("/discussions/threads/:threadId/replies", discussionHandler.CreateReply)
+		api.POST("/discussions/replies", discussionHandler.CreateReplyByBody)
 
 		// Flashcards
 		api.GET("/flashcards/studypack/:studyPackId", flashcardHandler.GetFlashcardsByStudyPack)
@@ -133,6 +142,9 @@ func main() {
 
 		// AI
 		api.GET("/ai/studypack/:materialId", aiHandler.GetStudyPack)
+		api.GET("/ai/review/:materialId", aiHandler.GetReviewDraft)
+		api.POST("/ai/review/:materialId/approve", aiHandler.ApproveStudyPack)
+		api.POST("/ai/review/:materialId/regenerate", aiHandler.RegenerateStudyPack)
 		api.POST("/ai/tutor", aiHandler.TutorChat)
 
 		// Imports

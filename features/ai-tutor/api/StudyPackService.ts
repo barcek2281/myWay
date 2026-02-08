@@ -230,7 +230,7 @@ const fetchYoutubeTranscript = async (url: string): Promise<string> => {
         console.log('🎬 Fetching YouTube transcript from backend:', url)
 
         // Call our backend endpoint instead of trying to fetch directly (CORS issue)
-        const response = await fetch(`http://localhost:8080/youtube/transcript?url=${encodeURIComponent(url)}`, {
+        const response = await fetch(`http://localhost:8081/youtube/transcript?url=${encodeURIComponent(url)}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',

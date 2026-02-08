@@ -6,6 +6,7 @@ import { OrgTopBar } from '../features/organization/components/OrgTopBar'
 import { OrgCard } from '../features/organization/components/OrgCard'
 import { Organization } from '../features/organization/types'
 import apiClient from '../lib/axios-client'
+import { useNavigate } from 'react-router-dom'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -25,64 +26,89 @@ const itemVariants = {
 }
 
 export function OrgSelectorPage() {
+  const navigate = useNavigate()
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const buildRoleMockOrganizations = (): Organization[] => {
+    const role = (localStorage.getItem('mock_role') || 'STUDENT').toUpperCase()
+
+    const base: Organization[] = [
+      {
+        id: 'dbb3b2a0-42c2-40f4-b209-1736e655977a',
+        name: 'Stanford University',
+        role: role === 'TEACHER' ? 'TEACHER' : role === 'ORGANIZER' ? 'ORGANIZER' : 'STUDENT',
+        memberCount: 15420,
+        activity: { points: [20, 45, 60, 55, 80, 75, 90], trend: 'up', label: 'Growing' },
+        color: '#8C1515',
+        isMock: true,
+      },
+      {
+        id: 'e155d5d3-75f5-43a7-e532-40691988200d',
+        name: 'Google Learning',
+        role: role === 'TEACHER' ? 'TEACHER' : role === 'ORGANIZER' ? 'ORGANIZER' : 'STUDENT',
+        memberCount: 8500,
+        activity: { points: [25, 40, 55, 60, 75, 80, 92], trend: 'up', label: 'Trending' },
+        color: '#4285F4',
+        isMock: true,
+      },
+    ]
+
+    if (role === 'TEACHER') {
+      base.push({
+        id: 'c144c4c2-64e4-42f6-d421-39580877199c',
+        name: 'Harvard Faculty Hub',
+        role: 'TEACHER',
+        memberCount: 2200,
+        activity: { points: [40, 55, 50, 75, 70, 82, 85], trend: 'neutral', label: 'Stable' },
+        color: '#A41034',
+        isMock: true,
+      })
+    }
+
+    return base
+  }
+
   const fetchOrgs = useCallback(async () => {
     try {
-      // Mock data instead of API call
-      const mockOrganizations: Organization[] = [
-        {
-          id: 'org-stanford',
-          name: 'Stanford University',
-          role: 'STUDENT',
-          memberCount: 15420,
+      setLoading(true)
+      setError(null)
+
+      // 1) Try real backend organizations first
+      try {
+        const res = await apiClient.get('/organizations')
+        const realOrgs = (res.data || []).map((org: any) => ({
+          id: String(org.id),
+          name: String(org.name),
+          role: (org.role || 'STUDENT') as Organization['role'],
+          plan: org.plan,
+          memberCount: 0,
+          color: '#4F46E5',
           activity: {
-            points: [20, 45, 60, 55, 80, 75, 90],
-            trend: 'up',
-            label: 'Growing',
+            points: [40, 48, 52, 49, 61, 66, 72],
+            trend: 'up' as const,
+            label: 'Live',
           },
-          color: '#8C1515',
-        },
-        {
-          id: 'org-mit',
-          name: 'MIT',
-          role: 'STUDENT',
-          memberCount: 11520,
-          activity: {
-            points: [30, 50, 45, 70, 65, 85, 88],
-            trend: 'up',
-            label: 'Excellent',
-          },
-          color: '#A31F34',
-        },
-        {
-          id: 'org-harvard',
-          name: 'Harvard University',
-          role: 'TEACHER',
-          memberCount: 22000,
-          activity: {
-            points: [40, 55, 50, 75, 70, 82, 85],
-            trend: 'neutral',
-            label: 'Stable',
-          },
-          color: '#A41034',
-        },
-        {
-          id: 'org-google',
-          name: 'Google Learning',
-          role: 'STUDENT',
-          memberCount: 8500,
-          activity: {
-            points: [25, 40, 55, 60, 75, 80, 92],
-            trend: 'up',
-            label: 'Trending',
-          },
-          color: '#4285F4',
-        },
-      ];
-      setOrganizations(mockOrganizations);
+        }))
+
+        // If no real organizations, provide role-based mock orgs so student/teacher can still enter catalogs.
+        if (realOrgs.length === 0) {
+          setOrganizations(buildRoleMockOrganizations())
+          return
+        }
+
+        setOrganizations(realOrgs)
+        return
+      } catch (backendErr) {
+        console.warn('Backend organizations fetch failed, falling back to mock data', backendErr)
+      }
+
+      // 2) Fallback mock organizations
+      setOrganizations(buildRoleMockOrganizations())
+
+      // In a real scenario with mixed mode, we might want to also fetch real ones 
+      // and append them, but for now we stick to the requested mocks.
     } catch (err) {
       console.error('Failed to fetch orgs:', err);
       setError('Could not load organizations.');
@@ -99,10 +125,40 @@ export function OrgSelectorPage() {
     const name = prompt('Enter Organization Name:')
     if (!name) return
     try {
-      await apiClient.post('/orgs', { name })
+      await apiClient.post('/organizations', { name })
       fetchOrgs()
     } catch (err) {
       alert('Failed to create organization')
+    }
+  }
+
+  const handleSelectOrganization = async (org: Organization) => {
+    if (org.isMock) {
+      localStorage.setItem('active_org_id', org.id)
+      localStorage.setItem('mock_role', org.role)
+      navigate(`/organizations/${org.id}`)
+      return
+    }
+
+    try {
+      await apiClient.post(`/organizations/${org.id}/switch`)
+      localStorage.setItem('active_org_id', org.id)
+      navigate(`/organizations/${org.id}`)
+    } catch (err: any) {
+      // If user is not yet a member, try joining then switch again.
+      if (err?.response?.status === 403) {
+        try {
+          await apiClient.post(`/organizations/${org.id}/join`)
+          await apiClient.post(`/organizations/${org.id}/switch`)
+          localStorage.setItem('active_org_id', org.id)
+          navigate(`/organizations/${org.id}`)
+          return
+        } catch (joinErr) {
+          console.error('Join organization failed:', joinErr)
+        }
+      }
+
+      alert('Failed to switch organization')
     }
   }
 
@@ -150,7 +206,7 @@ export function OrgSelectorPage() {
               <>
                 {organizations.map((org) => (
                   <motion.div key={org.id} variants={itemVariants}>
-                    <OrgCard org={org} />
+                    <OrgCard org={org} onSelect={handleSelectOrganization} />
                   </motion.div>
                 ))}
 

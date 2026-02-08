@@ -12,13 +12,21 @@ apiClient.interceptors.request.use((config) => {
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+
+    const activeOrgId = localStorage.getItem('active_org_id');
+    if (activeOrgId) {
+        config.headers['X-Org-ID'] = activeOrgId;
+    }
+
     return config;
 });
 
 apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
-        const isAuthRequest = error.config?.url?.includes('/auth/signin') || error.config?.url?.includes('/auth/signup');
+        const isAuthRequest = error.config?.url?.includes('/auth/signin') ||
+            error.config?.url?.includes('/auth/signup') ||
+            error.config?.url?.includes('/auth/me');
 
         if (error.response?.status === 401 && !isAuthRequest) {
             localStorage.removeItem('access_token');

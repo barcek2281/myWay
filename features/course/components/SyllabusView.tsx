@@ -1,7 +1,12 @@
 import React from 'react'
 import { FileText, Download, Calendar, Clock, BookOpen } from 'lucide-react'
 
-export function SyllabusView() {
+// Interface for the component props
+interface SyllabusViewProps {
+    syllabus?: SyllabusItem[]
+}
+
+export function SyllabusView({ syllabus = [] }: SyllabusViewProps) {
     const syllabusData = [
         {
             week: 1,

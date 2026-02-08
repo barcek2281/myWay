@@ -31,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error('Auth check failed:', error)
             localStorage.removeItem('access_token')
             localStorage.removeItem('refresh_token')
+            localStorage.removeItem('active_org_id')
             setUser(null)
         } finally {
             setIsLoading(false)
@@ -83,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const logout = () => {
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
+        localStorage.removeItem('active_org_id')
         setUser(null)
         window.location.href = '/signin'
     }

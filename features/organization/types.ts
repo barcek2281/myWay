@@ -10,9 +10,11 @@ export interface Organization {
   id: string
   name: string
   role: Role
-  memberCount: number
-  activity: ActivityData
-  color: string // Hex color for the icon background
+  memberCount?: number
+  activity?: ActivityData
+  color?: string // Hex color for the icon background
+  plan?: string
+  isMock?: boolean
 }
 
 export interface User {

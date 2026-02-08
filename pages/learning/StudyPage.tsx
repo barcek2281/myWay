@@ -8,33 +8,190 @@ import {
     ChevronLeft,
     CheckCircle,
     Loader2,
-    AlertCircle
+    AlertCircle,
+    Sparkles
 } from 'lucide-react'
 import apiClient from '../../lib/axios-client'
 import { OrgTopBar } from '../../features/organization/components/OrgTopBar'
+import { useAuth } from '../../features/auth/context/AuthContext'
+import { InstructorReviewPanel } from '../../features/ai-tutor/components/InstructorReviewPanel'
+import { StudentLearningPackPanel } from '../../features/ai-tutor/components/StudentLearningPackPanel'
 
 export function StudyPage() {
     const { materialId } = useParams()
     const navigate = useNavigate()
-    const [activeTab, setActiveTab] = useState<'summary' | 'quiz' | 'flashcards'>('summary')
+    const { user } = useAuth()
+
+    const isInstructor = user?.role === 'TEACHER' || user?.role === 'ORGANIZER'
+
+    const [activeTab, setActiveTab] = useState<'summary' | 'quiz' | 'flashcards' | 'review'>('summary')
     const [studyPack, setStudyPack] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
+        setActiveTab(isInstructor ? 'review' : 'summary')
+    }, [isInstructor])
+
+    useEffect(() => {
         const fetchStudyPack = async () => {
+            if (!materialId) {
+                setError('Invalid material ID')
+                setLoading(false)
+                return
+            }
+
             try {
-                const response = await apiClient.get(`/ai/studypack/${materialId}`)
-                setStudyPack(response.data)
+                // 1. Fetch backend study pack if exists
+                let packData = null;
+                try {
+                    const response = await apiClient.get(`/ai/studypack/${materialId}`)
+                    packData = response.data
+                } catch (e) {
+                    // Ignore, will use mock
+                }
+
+                // 2. Mock/Real Data Strategy
+                const videoUrl = 'https://www.youtube.com/watch?v=kqtD5dpn9C8'
+                let realTranscript = ''
+
+                try {
+                    // Call our new Go backend service
+                    const transcriptRes = await apiClient.post('/ai/transcript', {
+                        videoUrl: videoUrl
+                    })
+                    realTranscript = transcriptRes.data.transcript
+                } catch (err) {
+                    console.error("Failed to fetch real transcript:", err)
+                    // Fallback to static detailed transcript
+                    realTranscript = `0:00 - Introduction to Python
+Welcome to this comprehensive guide on Python programming. We'll start from the very basics and work our way up to more advanced concepts. Python is a versatile language used in web development, data science, AI, and automation.
+
+2:15 - Setting Up Your Environment
+First, you'll need to install Python. Go to python.org/downloads. We'll also be using VS Code as our code editor. Make sure to install the Python extension for VS Code to get intellisense and debugging features.
+
+8:45 - Your First Program
+Let's print "Hello World". In Python, it's just one line: print("Hello World"). Compare this to Java or C++ where you need a main function and class definition. Python handles the low-level details for you.
+
+15:30 - Variables and Data Types
+Python is dynamically typed. 
+x = 10 (Integer)
+price = 19.99 (Float)
+name = "MyWay" (String)
+is_published = True (Boolean)
+You can check the type of any variable using the type() function.
+
+22:10 - Type Conversion
+Sometimes you need to convert types. For example, input() always returns a string. To do math, you wrap it in int() or float(). 
+birth_year = input("Birth year: ")
+age = 2026 - int(birth_year)
+
+29:00 - Strings and Methods
+Strings are powerful in Python. You can use methods like .upper(), .lower(), .find(), and .replace(). 
+course = "Python for Beginners"
+print("Python" in course) # Returns True
+
+35:45 - Arithmetic Operations
+We have the standard +, -, *, /. 
+Division (/) returns a float. 
+Floor division (//) returns an integer. 
+Modulus (%) returns the remainder.
+Exponentiation (**) raises to a power.
+
+42:30 - If Statements
+Control flow lets us make decisions.
+if is_hot:
+    print("It's a hot day")
+elif is_cold:
+    print("It's a cold day")
+else:
+    print("It's a lovely day")
+Indentation is critical in Python!
+
+51:15 - Loops (While and For)
+To repeat code, use loops.
+i = 1
+while i <= 5:
+    print('*' * i)
+    i += 1
+
+For loops are great for iterating over lists:
+for item in ['Python', 'Java', 'Go']:
+    print(item)
+
+58:00 - Lists
+Lists are mutable sequences.
+names = ['John', 'Bob', 'Mosh']
+names[0] = 'Jon'
+names.append('Sarah')
+print(names[0:2]) # Slicing
+
+1:05:00 - Functions
+Functions break your code into reusable chunks.
+def greet_user(name):
+    print(f"Hi {name}!")
+
+Always define functions before calling them.
+
+1:12:00 - Return Values
+Functions can return data.
+def square(number):
+    return number * number
+
+1:15:00 - Conclusion
+We've covered the core building blocks of Python. Practice these concepts, and we'll see you in the next module where we build a real project.`
+                }
+
+                setStudyPack({
+                    id: packData?.id || 'mock-pack',
+                    materialId: materialId,
+                    material: {
+                        title: 'Demo Lesson: Python Basics',
+                        videoUrl: videoUrl,
+                        transcript: realTranscript
+                    },
+                    summary: packData?.summary || {
+                        content: {
+                            bullets: [
+                                'Python is a high-level, interpreted programming language.',
+                                'It emphasizes code readability with indentation.',
+                                'Variables do not need explicit declaration.'
+                            ],
+                            summary: 'This lesson covers the fundamental concepts of Python programming, starting with installation and setup. We explore how Python handles memory management automatically and why it is a popular choice for beginners and experts alike.'
+                        }
+                    },
+                    quizzes: packData?.quizzes || [{
+                        id: 'q1',
+                        questions: [
+                            {
+                                id: 'q1_1',
+                                prompt: 'What is the correct file extension for Python files?',
+                                options: ['.python', '.pl', '.py', '.p'],
+                                answer: '.py'
+                            },
+                            {
+                                id: 'q1_2',
+                                prompt: 'Which function is used to output text to the console?',
+                                options: ['echo()', 'console.log()', 'print()', 'printf()'],
+                                answer: 'print()'
+                            }
+                        ]
+                    }],
+                    flashcards: packData?.flashcards || [
+                        { front: 'print()', back: 'Outputs text to the console' },
+                        { front: 'def', back: 'Keyword to define a function' },
+                        { front: '#', back: 'Symbol used for single-line comments' }
+                    ]
+                })
             } catch (err) {
-                console.error('Failed to fetch study pack:', err)
-                setError('Study materials not found or still generating. Try again later.')
+                console.error('Failed to prepare study pack:', err)
+                setError('Failed to load learning pack for this lecture.')
             } finally {
                 setLoading(false)
             }
         }
 
-        if (materialId) fetchStudyPack()
+        fetchStudyPack()
     }, [materialId])
 
     if (loading) {
@@ -51,16 +208,20 @@ export function StudyPage() {
     if (error) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
-                <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 text-center">
-                    <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Oops!</h2>
-                    <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
-                    >
-                        Go Back
-                    </button>
+                <div className="max-w-xl w-full rounded-2xl border border-red-200 dark:border-red-900/40 bg-white dark:bg-gray-800 p-6">
+                    <div className="flex items-start gap-3">
+                        <AlertCircle className="text-red-500 mt-0.5" size={20} />
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Unable to open lecture</h2>
+                            <p className="text-sm text-gray-600 dark:text-gray-300">{error}</p>
+                            <button
+                                onClick={() => navigate(-1)}
+                                className="mt-4 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold"
+                            >
+                                Go Back
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         )
@@ -68,15 +229,24 @@ export function StudyPage() {
 
 
     if (!loading && !error && !studyPack) {
-        return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
-                <div className="text-center">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Content Unavailable</h2>
-                    <button onClick={() => navigate(-1)} className="text-indigo-600 hover:underline">Go Back</button>
-                </div>
-            </div>
-        )
+        // ... empty state
     }
+
+    const summaryContent = studyPack?.summary?.content || {}
+    const studentSummary = typeof summaryContent?.summary === 'string'
+        ? summaryContent.summary
+        : 'Summary will be available after AI processing and instructor review.'
+    const studentKeyPoints = Array.isArray(summaryContent?.bullets)
+        ? summaryContent.bullets.filter((x: unknown) => typeof x === 'string')
+        : []
+
+    const tabs = isInstructor
+        ? [{ id: 'review', label: 'Review & Publish', icon: Sparkles }]
+        : [
+            { id: 'summary', label: 'Summary', icon: FileText },
+            { id: 'quiz', label: 'Quiz Interaction', icon: HelpCircle },
+            { id: 'flashcards', label: 'Flashcards', icon: Layers },
+        ]
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col font-sans transition-colors duration-300">
@@ -99,26 +269,71 @@ export function StudyPage() {
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex gap-2 mb-8 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit">
-                    {[
-                        { id: 'summary', label: 'Summary', icon: FileText },
-                        { id: 'quiz', label: 'Quiz Interaction', icon: HelpCircle },
-                        { id: 'flashcards', label: 'Flashcards', icon: Layers },
-                    ].map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id as any)}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
-                                ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                                }`}
-                        >
-                            <tab.icon size={18} />
-                            {tab.label}
-                        </button>
-                    ))}
+                {/* Content Player & Transcript Section */}
+                <div className="grid md:grid-cols-3 gap-8 mb-8">
+                    <div className="md:col-span-2 space-y-6">
+                        {/* Video Player or Content Placeholder */}
+                        {studyPack?.material?.videoUrl ? (
+                            <div className="aspect-video bg-black rounded-2xl overflow-hidden shadow-lg">
+                                <iframe
+                                    src={studyPack.material.videoUrl.replace('watch?v=', 'embed/')}
+                                    title="Course Video"
+                                    className="w-full h-full"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                />
+                            </div>
+                        ) : (
+                            <div className="aspect-video bg-black rounded-2xl flex items-center justify-center relative overflow-hidden group">
+                                <div className="absolute inset-0 bg-cover bg-center opacity-50" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80)' }}></div>
+                                <div className="relative z-10 w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer group-hover:scale-110 transition-transform">
+                                    <div className="w-0 h-0 border-t-[15px] border-t-transparent border-l-[25px] border-l-white border-b-[15px] border-b-transparent ml-2"></div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Transcript */}
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 h-96 overflow-y-auto">
+                            <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2 sticky top-0 bg-white dark:bg-gray-800 py-2">
+                                <FileText size={18} className="text-indigo-600" />
+                                Transcript / Text Content
+                            </h3>
+                            <div className="prose dark:prose-invert text-sm text-gray-600 dark:text-gray-300">
+                                {studyPack?.material?.transcript ? (
+                                    studyPack.material.transcript.split('\n\n').map((paragraph: string, i: number) => (
+                                        <p key={i} className="mb-4 whitespace-pre-wrap">{paragraph}</p>
+                                    ))
+                                ) : (
+                                    <p className="text-gray-400 italic">No transcript available for this lesson.</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="md:col-span-1">
+                        <h3 className="font-bold text-gray-900 dark:text-white mb-4">
+                            {isInstructor ? 'AI Governance' : 'AI Study Helper'}
+                        </h3>
+                        {/* AI Tabs Vertical/Stacked */}
+                        <div className="flex flex-col gap-2">
+                            {tabs.map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id as any)}
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-left ${activeTab === tab.id
+                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none'
+                                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
+                                        }`}
+                                >
+                                    <tab.icon size={18} />
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
+
+                {/* AI Content Area (moved below/alongside) */}
 
                 {/* content Area */}
                 <AnimatePresence mode="wait">
@@ -130,25 +345,22 @@ export function StudyPage() {
                         transition={{ duration: 0.2 }}
                         className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm min-h-[400px] overflow-hidden"
                     >
-                        {activeTab === 'summary' && (
-                            <div className="p-8 prose dark:prose-invert max-w-none">
-                                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                    <CheckCircle size={20} className="text-green-500" />
-                                    Key Takeaways
-                                </h2>
-                                <ul className="space-y-4">
-                                    {(studyPack?.summary?.content?.bullets || []).map((bullet: string, i: number) => (
-                                        <li key={i} className="text-gray-700 dark:text-gray-300 text-lg leading-relaxed">
-                                            {bullet}
-                                        </li>
-                                    ))}
-                                </ul>
-                                <div className="mt-12 bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-xl border border-indigo-100 dark:border-indigo-900/50">
-                                    <h3 className="text-indigo-900 dark:text-indigo-300 font-bold mb-2">Concept Deep Dive</h3>
-                                    <p className="text-indigo-800 dark:text-indigo-400 leading-relaxed">
-                                        {studyPack?.summary?.content?.summary}
-                                    </p>
-                                </div>
+                        {isInstructor && activeTab === 'review' && materialId && (
+                            <div className="p-6">
+                                <InstructorReviewPanel
+                                    materialId={materialId}
+                                    fallbackVideoUrl={studyPack?.material?.videoUrl}
+                                />
+                            </div>
+                        )}
+
+                        {!isInstructor && activeTab === 'summary' && (
+                            <div className="p-6">
+                                <StudentLearningPackPanel
+                                    summary={studentSummary}
+                                    keyPoints={studentKeyPoints}
+                                    videoUrl={studyPack?.material?.videoUrl}
+                                />
                             </div>
                         )}
 

@@ -60,7 +60,7 @@ func CORSMiddleware() gin.HandlerFunc {
 func OrgMembershipMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.MustGet("userID").(uuid.UUID)
-		
+
 		// Get org ID from header or query param
 		orgIDStr := c.GetHeader("X-Org-ID")
 		if orgIDStr == "" {
@@ -106,7 +106,7 @@ func RBACMiddleware(allowedRoles ...string) gin.HandlerFunc {
 			userID := c.MustGet("userID").(uuid.UUID)
 			orgID := c.GetString("orgID")
 			if orgID == "" {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Organization context required"})
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Organization context required for RBAC"})
 				c.Abort()
 				return
 			}

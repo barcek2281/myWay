@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import React from 'react'
+import { Navigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Loader2 } from 'lucide-react'
 
-export function ProtectedRoute({ children }: { children: React.ReactNode }) {
+export function ProtectedRoute({ children }: { children?: React.ReactNode }) {
     const { user, isLoading } = useAuth()
     const location = useLocation()
 
@@ -19,5 +19,5 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         return <Navigate to="/signin" state={{ from: location }} replace />
     }
 
-    return <>{children}</>
+    return children ? <>{children}</> : <Outlet />
 }

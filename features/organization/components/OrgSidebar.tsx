@@ -71,7 +71,11 @@ export function OrgSidebar() {
         <div className="px-3 mb-2 text-xs font-semibold text-indigo-400 uppercase tracking-wider">
           Platform
         </div>
-        {navItems.map((item) => {
+        {navItems.filter(item => {
+          // Hide Team tab for Students
+          if (item.label === 'Team' && user?.role === 'STUDENT') return false
+          return true
+        }).map((item) => {
           const isActive = item.path === '/'
             ? location.pathname === '/'
             : location.pathname.startsWith(item.path)

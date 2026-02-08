@@ -98,6 +98,11 @@ type CreateReplyRequest struct {
 	Body string `json:"body" binding:"required"`
 }
 
+type CreateReplyByBodyRequest struct {
+	ThreadID string `json:"threadId" binding:"required"`
+	Body     string `json:"body" binding:"required"`
+}
+
 func (h *DiscussionHandler) CreateReply(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)
 	threadID, err := uuid.Parse(c.Param("threadId"))
@@ -112,6 +117,28 @@ func (h *DiscussionHandler) CreateReply(c *gin.Context) {
 		return
 	}
 
+	h.createReply(c, userID, threadID, req.Body)
+}
+
+func (h *DiscussionHandler) CreateReplyByBody(c *gin.Context) {
+	userID := c.MustGet("userID").(uuid.UUID)
+
+	var req CreateReplyByBodyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	threadID, err := uuid.Parse(req.ThreadID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid thread ID"})
+		return
+	}
+
+	h.createReply(c, userID, threadID, req.Body)
+}
+
+func (h *DiscussionHandler) createReply(c *gin.Context, userID uuid.UUID, threadID uuid.UUID, body string) {
 	// Verify thread exists
 	var thread models.Thread
 	if err := database.GetDB().First(&thread, threadID).Error; err != nil {
@@ -122,7 +149,7 @@ func (h *DiscussionHandler) CreateReply(c *gin.Context) {
 	reply := models.Reply{
 		ThreadID:  threadID,
 		CreatedBy: userID,
-		Body:      req.Body,
+		Body:      body,
 	}
 
 	if err := database.GetDB().Create(&reply).Error; err != nil {

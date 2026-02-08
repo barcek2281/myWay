@@ -4,6 +4,8 @@ import (
 	"myway-backend/internal/database"
 	"myway-backend/internal/models"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -189,4 +191,82 @@ func (h *AssignmentHandler) SubmitAssignment(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, submission)
+}
+
+type GradeSubmissionRequest struct {
+	Score    int    `json:"score" binding:"required"`
+	Feedback string `json:"feedback"`
+}
+
+func (h *AssignmentHandler) GradeSubmission(c *gin.Context) {
+	graderID := c.MustGet("userID").(uuid.UUID)
+	submissionID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid submission ID"})
+		return
+	}
+
+	var req GradeSubmissionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.Score < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Score must be >= 0"})
+		return
+	}
+
+	var submission models.Submission
+	if err := database.GetDB().Preload("Assignment.Course").First(&submission, submissionID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Submission not found"})
+		return
+	}
+
+	course := submission.Assignment.Course
+	if course.ID == uuid.Nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to resolve submission course"})
+		return
+	}
+
+	// RBAC: only TEACHER or ORGANIZER in course organization can grade
+	var membership models.OrgMembership
+	if err := database.GetDB().Where("user_id = ? AND org_id = ? AND status = ?", graderID, course.OrgID, "Active").First(&membership).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have access to this organization"})
+		return
+	}
+	if membership.Role != "TEACHER" && membership.Role != "ORGANIZER" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only teachers or organizers can grade submissions"})
+		return
+	}
+
+	if req.Score > submission.Assignment.Points {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Score cannot exceed assignment max points"})
+		return
+	}
+
+	gradeValue := strconv.Itoa(req.Score)
+	submission.Status = "GRADED"
+	submission.Grade = &gradeValue
+	if strings.TrimSpace(req.Feedback) == "" {
+		submission.Feedback = nil
+	} else {
+		feedback := strings.TrimSpace(req.Feedback)
+		submission.Feedback = &feedback
+	}
+
+	if err := database.GetDB().Save(&submission).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to grade submission"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":           submission.ID,
+		"assignmentId": submission.AssignmentID,
+		"userId":       submission.UserID,
+		"status":       submission.Status,
+		"score":        req.Score,
+		"maxPoints":    submission.Assignment.Points,
+		"feedback":     submission.Feedback,
+	})
 }

@@ -20,9 +20,9 @@ export function ProfilePage() {
         if (user) {
             setFormData(prev => ({
                 ...prev,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email
+                firstName: user.firstName ?? '',
+                lastName: user.lastName ?? '',
+                email: user.email ?? ''
             }))
         }
     }, [user])

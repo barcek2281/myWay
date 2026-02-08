@@ -10,7 +10,6 @@ import {
 } from 'lucide-react'
 import { Module, Lesson, UserRole } from '../types'
 import { MaterialImportModal } from './MaterialImportModal'
-import { StudyPackGenerator } from '../../ai-tutor/components/StudyPackGenerator'
 import { useStudyPacks } from '../../ai-tutor/context/StudyPackContext'
 
 interface ModuleAccordionProps {
@@ -53,9 +52,12 @@ export function ModuleAccordion({ module, courseId, index, role, onRefresh }: Mo
     >
       {/* Module Header */}
       <div className="relative">
-        <button
+        <div
           onClick={() => !module.isLocked && setIsOpen(!isOpen)}
-          className={`w-full p-6 text-left transition-colors ${module.isLocked ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && !module.isLocked && setIsOpen(!isOpen)}
+          className={`w-full p-6 text-left transition-colors ${module.isLocked ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer'}`}
         >
           <div className="flex items-start gap-4">
             <div
@@ -111,7 +113,7 @@ export function ModuleAccordion({ module, courseId, index, role, onRefresh }: Mo
               )}
             </div>
           </div>
-        </button>
+        </div>
       </div>
 
       <MaterialImportModal
@@ -132,40 +134,10 @@ export function ModuleAccordion({ module, courseId, index, role, onRefresh }: Mo
             className="border-t border-gray-100 dark:border-gray-700"
           >
             <div className="p-6 space-y-6">
-              {/* Import Material Button */}
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setIsImportModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all"
-                >
-                  <Plus size={20} />
-                  Import Learning Material
-                </button>
-              </div>
 
-              {/* Study Packs */}
-              {studyPacks.length > 0 && (
-                <div className="space-y-4">
-                  <h4 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
-                    AI-Generated Study Packs
-                  </h4>
-                  {studyPacks.map((studyPack) => (
-                    <StudyPackGenerator
-                      key={studyPack.id}
-                      studyPack={studyPack}
-                      onQuizComplete={(score, total) => {
-                        console.log(`Quiz completed: ${score}/${total}`)
-                        // This will be stored in localStorage by QuizSession
-                      }}
-                      onFlashcardComplete={(known, unknown) => {
-                        console.log(`Flashcards: ${known} known, ${unknown} unknown`)
-                        // This will be stored in localStorage by FlashcardSession
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
+
+              {/* Study Packs - REMOVED as per new architecture (moved to StudyPage) */}
+              {/* {studyPacks.length > 0 && ( ... )} */}
 
               {/* Lessons */}
               {module.lessons.length > 0 && (
@@ -196,7 +168,7 @@ export function ModuleAccordion({ module, courseId, index, role, onRefresh }: Mo
                         </div>
                       </div>
                       <div className="px-4 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors">
-                        Start
+                        Study Lesson
                       </div>
                     </motion.button>
                   ))}

@@ -14,6 +14,84 @@ import { CourseChatWidget } from '../features/ai-tutor/components/CourseChatWidg
 import { Course, UserRole } from '../features/course/types'
 import { useAuth } from '../features/auth/context/AuthContext'
 
+const buildFallbackCourse = (id: string, role: UserRole): Course => {
+  const lowerId = id.toLowerCase()
+
+  const preset = (() => {
+    if (lowerId.includes('cs101')) return { code: 'CS101', title: 'Introduction to Computer Science', instructor: 'Prof. John Doe' }
+    if (lowerId.includes('math221')) return { code: 'MATH221', title: 'Linear Algebra', instructor: 'Prof. Jane Smith' }
+    if (lowerId.includes('stat110')) return { code: 'STAT110', title: 'Probability', instructor: 'Prof. Joe Blitzstein' }
+    if (lowerId.includes('ml101')) return { code: 'ML101', title: 'Machine Learning Crash Course', instructor: 'Google AI Team' }
+    if (lowerId.includes('cloud101') || lowerId.includes('cloud')) return { code: 'CLOUD101', title: 'Cloud Computing Fundamentals', instructor: 'Google Cloud Team' }
+    if (lowerId.includes('arch330')) return { code: 'ARCH330', title: 'System Design Studio', instructor: 'You' }
+    if (lowerId.includes('sec210')) return { code: 'SEC210', title: 'Web API Security Essentials', instructor: 'You' }
+    if (lowerId.includes('ai250')) return { code: 'AI250', title: 'AI Tutor Prompting Lab', instructor: 'You' }
+    if (lowerId.includes('go401')) return { code: 'GO401', title: 'Advanced Go Backend Engineering', instructor: 'You' }
+
+    return {
+      code: 'COURSE',
+      title: id
+        .replace(/[-_]+/g, ' ')
+        .replace(/\b\w/g, (m) => m.toUpperCase()),
+      instructor: role === 'TEACHER' ? 'You' : 'Course Team',
+    }
+  })()
+
+  return {
+    id,
+    title: preset.title,
+    code: preset.code,
+    instructor: preset.instructor,
+    duration: '12 weeks',
+    description: `${preset.title} course workspace with overview, modules, assignments, discussions, and syllabus content ready for interaction.`,
+    objectives: [
+      'Understand core concepts and practical workflows',
+      'Complete module activities and assignments',
+      'Use discussions and AI tutor support for faster learning',
+    ],
+    progress: role === 'STUDENT' ? 48 : 0,
+    syllabus: [
+      { week: 1, title: 'Foundations', description: 'Core concepts and orientation', readings: ['Week 1 Reading Pack'] },
+      { week: 2, title: 'Practice & Labs', description: 'Hands-on guided activities', readings: ['Lab Guide'] },
+      { week: 3, title: 'Assessment', description: 'Assignment and review', readings: ['Assessment Rubric'] },
+      { week: 4, title: 'Project Sprint', description: 'Apply concepts in a mini-project', readings: ['Project Brief'] },
+    ],
+    modules: [
+      {
+        id: `${id}-m1`,
+        title: 'Module 1: Introduction',
+        description: 'Get started and understand the course flow',
+        lessons: [
+          { id: `${id}-l1`, title: 'Welcome & Orientation', type: 'video', duration: '12:00', completed: true },
+          { id: `${id}-l2`, title: 'Core Concepts', type: 'reading', duration: '18:00', completed: role === 'STUDENT' },
+        ],
+      },
+      {
+        id: `${id}-m2`,
+        title: 'Module 2: Applied Practice',
+        description: 'Hands-on implementation and examples',
+        lessons: [
+          { id: `${id}-l3`, title: 'Guided Walkthrough', type: 'video', duration: '20:00', completed: false },
+          { id: `${id}-l4`, title: 'Checkpoint Quiz', type: 'quiz', duration: '10:00', completed: false },
+        ],
+      },
+      {
+        id: `${id}-m3`,
+        title: 'Module 3: Final Integration',
+        description: 'Synthesize learning and prepare submission',
+        lessons: [
+          { id: `${id}-l5`, title: 'Project Briefing', type: 'reading', duration: '15:00', completed: false },
+          { id: `${id}-l6`, title: 'Submission Checklist', type: 'video', duration: '08:00', completed: false },
+        ],
+      },
+    ],
+    assignments: [
+      { id: `${id}-a1`, title: 'Assignment 1: Practical Task', dueDate: '2026-03-01', status: 'In Progress' },
+      { id: `${id}-a2`, title: 'Assignment 2: Reflection', dueDate: '2026-03-10', status: 'Not Started' },
+    ],
+  }
+}
+
 export function CoursePage() {
   const { courseId } = useParams()
   const { user } = useAuth()
@@ -269,16 +347,18 @@ export function CoursePage() {
         },
       };
 
-      const mockCourse = mockCourses[courseId];
+      const mockCourse = mockCourses[courseId]
       if (mockCourse) {
-        setCourse(mockCourse);
+        setCourse(mockCourse)
+      } else {
+        setCourse(buildFallbackCourse(courseId, role))
       }
     } catch (err) {
       console.error('Failed to fetch course:', err);
     } finally {
       setLoading(false);
     }
-  }, [courseId]);
+  }, [courseId, role]);
 
   useEffect(() => {
     fetchCourseData()
@@ -328,11 +408,12 @@ export function CoursePage() {
             {activeTab === 'modules' && (
               <div className="max-w-5xl">
                 <div className="mb-8">
+
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                     Course Modules
                   </h2>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Interact with AI-powered study packs and quizzes
+                    Access your learning materials and track progress
                   </p>
                 </div>
 

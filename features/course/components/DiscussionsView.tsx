@@ -42,7 +42,37 @@ export function DiscussionsView() {
 
   const fetchDiscussions = async () => {
     try {
-      // Mock discussion data
+      // Try backend first
+      const response = await apiClient.get(`/discussions/threads/course/${courseId}`)
+      const backendThreads = response.data || []
+
+      const mapped = backendThreads.map((thread: any) => ({
+        id: String(thread.id),
+        title: thread.title || 'Discussion',
+        author: thread.creator?.name || 'Unknown',
+        authorRole: thread.creator?.role || 'Student',
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(thread.creator?.name || 'User')}`,
+        content: thread.body || '',
+        timestamp: thread.created_at || 'Recently',
+        replies: (thread.replies || []).length,
+        likes: 0,
+        replyList: (thread.replies || []).map((reply: any) => ({
+          id: String(reply.id),
+          author: reply.creator?.name || 'Unknown',
+          authorRole: reply.creator?.role || 'Student',
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(reply.creator?.name || 'User')}`,
+          content: reply.body || '',
+          timestamp: reply.created_at || 'Recently',
+          likes: 0,
+        })),
+      }))
+
+      if (mapped.length > 0) {
+        setDiscussions(mapped)
+        return
+      }
+
+      // Mock discussion data fallback
       const mockDiscussions: Discussion[] = [
         {
           id: 'd1',
@@ -152,7 +182,23 @@ export function DiscussionsView() {
       ];
       setDiscussions(mockDiscussions);
     } catch (err) {
-      console.error('Failed to fetch discussions:', err);
+      console.error('Failed to fetch discussions, using fallback mock:', err);
+
+      const mockDiscussions: Discussion[] = [
+        {
+          id: 'd1',
+          title: 'Question about Binary Search Trees',
+          author: 'Alice Chen',
+          authorRole: 'Student',
+          avatar: 'https://ui-avatars.com/api/?name=Alice+Chen',
+          content: 'Can someone explain the difference between balanced and unbalanced BSTs? I\'m having trouble understanding when to use each.',
+          timestamp: '2 days ago',
+          replies: 3,
+          likes: 12,
+          replyList: [],
+        },
+      ]
+      setDiscussions(mockDiscussions)
     } finally {
       setLoading(false);
     }
@@ -165,7 +211,10 @@ export function DiscussionsView() {
   const handlePostReply = async (threadId: string) => {
     if (!replyText.trim()) return
     try {
-      await apiClient.post(`/discussions/thread/${threadId}/reply`, { body: replyText })
+      await apiClient.post('/discussions/replies', {
+        threadId,
+        body: replyText,
+      })
       setReplyText('')
       fetchDiscussions() // Refresh
     } catch (err) {
