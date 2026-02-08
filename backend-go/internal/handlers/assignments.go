@@ -27,15 +27,44 @@ type CreateAssignmentRequest struct {
 }
 
 func (h *AssignmentHandler) CreateAssignment(c *gin.Context) {
+	userID := c.MustGet("userID").(uuid.UUID)
+
 	var req CreateAssignmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	if strings.TrimSpace(req.Title) == "" || strings.TrimSpace(req.Instructions) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Title and instructions are required"})
+		return
+	}
+
+	if req.Points <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Points must be greater than 0"})
+		return
+	}
+
 	courseID, err := uuid.Parse(req.CourseID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid course ID"})
+		return
+	}
+
+	var course models.Course
+	if err := database.GetDB().First(&course, courseID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Course not found"})
+		return
+	}
+
+	var membership models.OrgMembership
+	if err := database.GetDB().Where("user_id = ? AND org_id = ? AND status = ?", userID, course.OrgID, "Active").First(&membership).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have access to this organization"})
+		return
+	}
+
+	if membership.Role != "TEACHER" && membership.Role != "ORGANIZER" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only teachers or organizers can create assignments"})
 		return
 	}
 
@@ -65,6 +94,18 @@ func (h *AssignmentHandler) GetAssignmentsByCourse(c *gin.Context) {
 
 	userID := c.MustGet("userID").(uuid.UUID)
 
+	var course models.Course
+	if err := database.GetDB().First(&course, courseID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Course not found"})
+		return
+	}
+
+	var membership models.OrgMembership
+	if err := database.GetDB().Where("user_id = ? AND org_id = ? AND status = ?", userID, course.OrgID, "Active").First(&membership).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have access to this organization"})
+		return
+	}
+
 	var assignments []models.Assignment
 	if err := database.GetDB().
 		Where("course_id = ? AND status = ?", courseID, "ACTIVE").
@@ -82,17 +123,22 @@ func (h *AssignmentHandler) GetAssignmentsByCourse(c *gin.Context) {
 		submissionMap[sub.AssignmentID] = sub
 	}
 
+	isTeacherView := membership.Role == "TEACHER" || membership.Role == "ORGANIZER"
+
 	// Build response with status
 	result := make([]gin.H, len(assignments))
 	for i, assignment := range assignments {
-		status := "NOT_STARTED"
-		if sub, exists := submissionMap[assignment.ID]; exists {
-			if sub.Status == "GRADED" {
-				status = "GRADED"
-			} else if sub.Status == "SUBMITTED" {
-				status = "SUBMITTED"
-			} else {
-				status = "IN_PROGRESS"
+		status := "IN_PROGRESS"
+		if !isTeacherView {
+			status = "NOT_STARTED"
+			if sub, exists := submissionMap[assignment.ID]; exists {
+				if sub.Status == "GRADED" {
+					status = "GRADED"
+				} else if sub.Status == "SUBMITTED" {
+					status = "SUBMITTED"
+				} else {
+					status = "IN_PROGRESS"
+				}
 			}
 		}
 
@@ -106,7 +152,17 @@ func (h *AssignmentHandler) GetAssignmentsByCourse(c *gin.Context) {
 			"submission":   nil,
 		}
 
-		if sub, exists := submissionMap[assignment.ID]; exists {
+		if !isTeacherView {
+			if sub, exists := submissionMap[assignment.ID]; exists {
+				result[i]["submission"] = sub
+			}
+		} else {
+			var submissionCount int64
+			database.GetDB().Model(&models.Submission{}).Where("assignment_id = ?", assignment.ID).Count(&submissionCount)
+			result[i]["submissionCount"] = submissionCount
+		}
+
+		if sub, exists := submissionMap[assignment.ID]; exists && !isTeacherView {
 			result[i]["submission"] = sub
 		}
 	}
@@ -121,6 +177,8 @@ func (h *AssignmentHandler) GetAssignment(c *gin.Context) {
 		return
 	}
 
+	userID := c.MustGet("userID").(uuid.UUID)
+
 	var assignment models.Assignment
 	if err := database.GetDB().
 		Preload("Submissions").
@@ -130,7 +188,75 @@ func (h *AssignmentHandler) GetAssignment(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, assignment)
+	var membership models.OrgMembership
+	if err := database.GetDB().Where("user_id = ? AND org_id = ? AND status = ?", userID, assignment.Course.OrgID, "Active").First(&membership).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have access to this organization"})
+		return
+	}
+
+	isTeacherView := membership.Role == "TEACHER" || membership.Role == "ORGANIZER"
+
+	response := gin.H{
+		"id":           assignment.ID,
+		"courseId":     assignment.CourseID,
+		"title":        assignment.Title,
+		"dueAt":        assignment.DueAt,
+		"points":       assignment.Points,
+		"instructions": assignment.Instructions,
+		"status":       assignment.Status,
+		"submission":   nil,
+		"submissions":  []gin.H{},
+	}
+
+	if isTeacherView {
+		userIDs := make([]uuid.UUID, 0, len(assignment.Submissions))
+		for _, s := range assignment.Submissions {
+			userIDs = append(userIDs, s.UserID)
+		}
+
+		userNameMap := make(map[uuid.UUID]string)
+		if len(userIDs) > 0 {
+			var users []models.User
+			database.GetDB().Where("id IN ?", userIDs).Find(&users)
+			for _, u := range users {
+				userNameMap[u.ID] = u.Name
+			}
+		}
+
+		safeSubmissions := make([]gin.H, 0, len(assignment.Submissions))
+		for _, s := range assignment.Submissions {
+			safeSubmissions = append(safeSubmissions, gin.H{
+				"id":          s.ID,
+				"userId":      s.UserID,
+				"studentName": userNameMap[s.UserID],
+				"status":      s.Status,
+				"fileUrl":     s.FileURL,
+				"submittedAt": s.SubmittedAt,
+				"grade":       s.Grade,
+				"feedback":    s.Feedback,
+			})
+		}
+
+		response["submissions"] = safeSubmissions
+		c.JSON(http.StatusOK, response)
+		return
+	}
+
+	for _, s := range assignment.Submissions {
+		if s.UserID == userID {
+			response["submission"] = gin.H{
+				"id":          s.ID,
+				"status":      s.Status,
+				"fileUrl":     s.FileURL,
+				"submittedAt": s.SubmittedAt,
+				"grade":       s.Grade,
+				"feedback":    s.Feedback,
+			}
+			break
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 type SubmitAssignmentRequest struct {

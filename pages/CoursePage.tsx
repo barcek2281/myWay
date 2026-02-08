@@ -391,7 +391,7 @@ export function CoursePage() {
       <div className="md:pl-64 flex flex-col min-h-screen">
         <CourseTopBar
           courseName={course.title}
-          orgName="Astana IT University"
+          orgName={course.code}
         />
 
         <main className="flex-1 p-8 max-w-6xl mx-auto w-full">

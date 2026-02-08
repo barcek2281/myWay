@@ -14,6 +14,7 @@ import { NotificationsPage } from './pages/NotificationsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { StudyPage } from './pages/learning/StudyPage'
+import { AssignmentSubmissionPage } from './pages/AssignmentSubmissionPage'
 import { ThemeProvider } from './context/ThemeContext'
 import { StudyPackProvider } from './features/ai-tutor/context/StudyPackContext'
 import { NotificationProvider } from './features/notifications/context/NotificationContext'
@@ -36,6 +37,7 @@ export function App() {
                   <Route path="/organizations" element={<OrgSelectorPage />} />
                   <Route path="/organizations/:orgId" element={<OrgCoursesPage />} />
                   <Route path="/course/:courseId" element={<CoursePage />} />
+                  <Route path="/course/:courseId/assignments/:assignmentId/submission" element={<AssignmentSubmissionPage />} />
                   <Route path="/study/:materialId" element={<StudyPage />} />
                   <Route path="/items" element={<PlaceholderPage title="Syllabus" />} />
                   <Route path="/syllabus" element={<PlaceholderPage title="Syllabus" />} />
